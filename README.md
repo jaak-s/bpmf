@@ -10,7 +10,7 @@ sudo apt-get install libeigen3-dev
 ```
 To see if eigen3 is successfully installed run `pkg-config --cflags eigen3`.
 
-Then compile eigen3
+Then compile BPMF
 ```bash
 cd c++/build
 make
