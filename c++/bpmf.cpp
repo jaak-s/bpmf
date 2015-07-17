@@ -202,9 +202,19 @@ void run() {
 
 #endif
 
+void usage()
+{
+    printf("Usage:\n");
+    printf("./bpmf <train.data> <test.data>\n");
+}
+
 int main(int argc, char *argv[])
 {
-    assert(argv[1] && argv[2] && "filename missing");
+    if (argc - 1 != 2) {
+        printf("The number of arguments was %d but should be 2.\n", argc - 1);
+        usage();
+        exit(1);
+    }
     Eigen::initParallel();
 
     loadMarket(M, argv[1]);
