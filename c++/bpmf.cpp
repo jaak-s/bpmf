@@ -221,8 +221,6 @@ int main(int argc, char *argv[])
     Mt = M.transpose();
     loadMarket(P, argv[2]);
 
-    assert(M.nonZeros() > P.nonZeros());
-
     init();
 #ifdef TEST_SAMPLE
     test();
