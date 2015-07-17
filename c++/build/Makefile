@@ -16,7 +16,7 @@ endif
 CXXFLAGS+=-fopenmp
 
 # Add Eigen path here
-CPPFLAGS=-I /home/tomh/usr/include/eigen3
+CPPFLAGS=`pkg-config --cflags eigen3`
 
 VPATH=..
 LINK.o=$(CXX) $(CXXFLAGS) $(LDFLAGS)
