@@ -18,60 +18,66 @@
 using namespace std;
 using namespace Eigen;
 
-const int num_feat = 32;
+int num_feat = 32;
 
-const double alpha = 2;
-const int nsims = 20;
-const int burnin = 5;
+double alpha = 2;
+int nsims = 20;
+int burnin = 5;
 
 double mean_rating = .0;
 
 typedef SparseMatrix<double> SparseMatrixD;
 SparseMatrixD M, Mt, P;
 
-typedef Matrix<double, num_feat, 1> VectorNd;
-typedef Matrix<double, num_feat, num_feat> MatrixNNd;
-typedef Matrix<double, num_feat, Dynamic> MatrixNXd;
+//typedef Matrix<double, num_feat, 1> VectorNd;
+//typedef Matrix<double, num_feat, num_feat> MatrixNNd;
+//typedef Matrix<double, num_feat, Dynamic> MatrixNXd;
 
-VectorNd mu_u;
-VectorNd mu_m;
-MatrixNNd Lambda_u;
-MatrixNNd Lambda_m;
-MatrixNXd sample_u;
-MatrixNXd sample_m;
+VectorXd mu_u;
+VectorXd mu_m;
+MatrixXd Lambda_u;
+MatrixXd Lambda_m;
+MatrixXd sample_u;
+MatrixXd sample_m;
 
 // parameters of Inv-Whishart distribution (see paper for details)
-MatrixNNd WI_u;
-const int b0_u = 2;
-const int df_u = num_feat;
-VectorNd mu0_u;
+MatrixXd WI_u;
+int b0_u = 2;
+int df_u = num_feat;
+VectorXd mu0_u;
 
-MatrixNNd WI_m;
-const int b0_m = 2;
-const int df_m = num_feat;
-VectorNd mu0_m;
+MatrixXd WI_m;
+int b0_m = 2;
+int df_m = num_feat;
+VectorXd mu0_m;
 
 void init() {
     mean_rating = M.sum() / M.nonZeros();
+    Lambda_u.resize(num_feat, num_feat);
+    Lambda_u.resize(num_feat, num_feat);
     Lambda_u.setIdentity();
     Lambda_m.setIdentity();
 
-    sample_u = MatrixNXd(num_feat,M.rows());
-    sample_m = MatrixNXd(num_feat,M.cols());
+    sample_u.resize(num_feat, M.rows());
+    sample_m.resize(num_feat, M.cols());
     sample_u.setZero();
     sample_m.setZero();
 
     // parameters of Inv-Whishart distribution (see paper for details)
+    WI_u.resize(num_feat, num_feat);
     WI_u.setIdentity();
+    mu0_u.resize(num_feat);
     mu0_u.setZero();
 
+    WI_m.resize(num_feat, num_feat);
     WI_m.setIdentity();
+    mu0_m.resize(num_feat);
     mu0_m.setZero();
 }
 
 inline double sqr(double x) { return x*x; }
 
-std::pair<double,double> eval_probe_vec(int n, VectorXd & predictions, const MatrixNXd &sample_m, const MatrixNXd &sample_u, double mean_rating)
+std::pair<double,double> eval_probe_vec(int n, VectorXd & predictions, const MatrixXd &sample_m, const MatrixXd &sample_u, double mean_rating)
 {
     double se = 0.0, se_avg = 0.0;
     unsigned idx = 0;
@@ -94,12 +100,14 @@ std::pair<double,double> eval_probe_vec(int n, VectorXd & predictions, const Mat
     return std::make_pair(rmse, rmse_avg);
 }
 
-void sample_movie(MatrixNXd &s, int mm, const SparseMatrixD &mat, double mean_rating,
-    const MatrixNXd &samples, double alpha, const VectorNd &mu_u, const MatrixNNd &Lambda_u)
+void sample_movie(MatrixXd &s, int mm, const SparseMatrixD &mat, double mean_rating,
+    const MatrixXd &samples, double alpha, const VectorXd &mu_u, const MatrixXd &Lambda_u)
 {
     int i = 0;
-    MatrixNNd MM; MM.setZero();
-    VectorNd rr; rr.setZero();
+    MatrixXd MM(num_feat, num_feat);
+    MM.setZero();
+    VectorXd rr(num_feat);
+    rr.setZero();
     for (SparseMatrixD::InnerIterator it(mat,mm); it; ++it, ++i) {
         // cout << "M[" << it.row() << "," << it.col() << "] = " << it.value() << endl;
         auto col = samples.col(it.row());
@@ -107,12 +115,12 @@ void sample_movie(MatrixNXd &s, int mm, const SparseMatrixD &mat, double mean_ra
         rr += col * ((it.value() - mean_rating) * alpha);
     }
 
-    Eigen::LLT<MatrixNNd> chol = (Lambda_u + alpha * MM).llt();
+    Eigen::LLT<MatrixXd> chol = (Lambda_u + alpha * MM).llt();
     if(chol.info() != Eigen::Success) {
       throw std::runtime_error("Cholesky Decomposition failed!");
     }
 
-    VectorNd tmp = rr + Lambda_u * mu_u;
+    VectorXd tmp = rr + Lambda_u * mu_u;
     chol.matrixL().solveInPlace(tmp);
     tmp += nrandn(num_feat);
     chol.matrixU().solveInPlace(tmp);
@@ -136,8 +144,8 @@ void sample_movie(MatrixNXd &s, int mm, const SparseMatrixD &mat, double mean_ra
 
 #ifdef TEST_SAMPLE
 void test() {
-    MatrixNXd sample_u(M.rows());
-    MatrixNXd sample_m(M.cols());
+    MatrixXd sample_u(num_feat, M.rows());
+    MatrixXd sample_m(num_feat, M.cols());
 
     mu_m.setZero();
     Lambda_m.setIdentity();
@@ -202,24 +210,82 @@ void run() {
 
 #endif
 
+/**
+ * finds option from the list of command line arguments
+ * returns 0 if not found
+ */
+char* getCmdOption(char ** begin, char ** end, const std::string & option)
+{
+    char ** itr = std::find(begin, end, option);
+    if (itr != end && ++itr != end)
+    {
+        return *itr;
+    }
+    return 0;
+}
+
+/**
+ * checks if command line option is present
+ */
+bool cmdOptionExists(char** begin, char** end, const std::string& option)
+{
+    return std::find(begin, end, option) != end;
+}
+
 void usage()
 {
     printf("Usage:\n");
-    printf("./bpmf <train.data> <test.data>\n");
+    printf("./bpmf [options] <train.data> <test.data>\n");
+    printf("where options are:\n");
+    printf(" -a alpha       precision (default 2.0)\n");
+    printf(" -d num_latent  number of latent dimensions (default 32)\n");
 }
 
 int main(int argc, char *argv[])
 {
-    if (argc - 1 != 2) {
-        printf("The number of arguments was %d but should be 2.\n", argc - 1);
+    // args: bpmf [options] <train.matrix> <test.matrix>
+    int optargc = argc - 3;
+    if (optargc < 0) {
+        printf("Need at least <train.matrix> and <test.matrix> files as arguments.\n");
         usage();
         exit(1);
     }
+    // making sure matrix files exist
+    char* train_matrix = argv[argc - 2];
+    char* test_matrix  = argv[argc - 1];
+    if ( access( train_matrix, F_OK) == -1 ) {
+        printf("File for train.matrix '%s' does not exist.\n", train_matrix);
+        usage();
+        exit(1);
+    }
+    if ( access( test_matrix, F_OK) == -1 ) {
+        printf("File for test.matrix '%s' does not exist.\n", test_matrix);
+        usage();
+        exit(1);
+    }
+
+    // fetching optional arguments
+    char * tmp;
+    tmp = getCmdOption(argv, argv + argc - 2, "-a");
+    if (tmp) {
+        alpha = atof(tmp);
+    }
+    tmp = getCmdOption(argv, argv + argc - 2, "-d");
+    if (tmp) {
+        num_feat = atoi(tmp);
+    }
+
+    printf("---- BPMF parameters ----\n");
+    printf("alpha      = %1.2f\n", alpha);
+    printf("num_latent = %d\n", num_feat);
+    printf("train      = %s\n", train_matrix);
+    printf("test       = %s\n", test_matrix);
+
     Eigen::initParallel();
 
-    loadMarket(M, argv[1]);
+    loadMarket(M, train_matrix);
     Mt = M.transpose();
-    loadMarket(P, argv[2]);
+    loadMarket(P, test_matrix);
 
     init();
 #ifdef TEST_SAMPLE
