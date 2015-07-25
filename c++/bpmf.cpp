@@ -4,6 +4,7 @@
 #include <string>
 #include <algorithm>
 #include <random>
+#include <chrono>
 
 #include <unsupported/Eigen/SparseExtra>
 
@@ -50,6 +51,41 @@ MatrixXd WI_m;
 int b0_m = 2;
 int df_m = num_feat;
 VectorXd mu0_m;
+
+/**
+ *  RNG for each thread.
+ *  Adopted from 
+ *    http://stackoverflow.com/questions/15918758/how-to-make-each-thread-use-its-own-rng-in-c11
+ */
+class RNG
+{
+public:
+    typedef std::mt19937 Engine;
+    typedef std::normal_distribution<double> Distribution;
+
+    RNG() : engines(), distribution(0.0, 1.0)
+    {
+        int threads = std::max(1, omp_get_max_threads());
+        for(int seed = 0; seed < threads; seed++)
+        {
+            unsigned seed1 = std::chrono::system_clock::now().time_since_epoch().count();
+            seed1 = seed1 ^ seed;
+            engines.push_back(Engine(seed1));
+        }
+    }
+
+    double operator()()
+    {
+        int id = omp_get_thread_num();
+        return distribution(engines[id]);
+    }
+
+    std::vector<Engine> engines;
+    Distribution distribution;
+};
+
+// parallel normal random
+RNG prandn;
 
 void init() {
     mean_rating = M.sum() / M.nonZeros();
@@ -122,7 +158,9 @@ void sample_movie(MatrixXd &s, int mm, const SparseMatrixD &mat, double mean_rat
 
     VectorXd tmp = rr + Lambda_u * mu_u;
     chol.matrixL().solveInPlace(tmp);
-    tmp += nrandn(num_feat);
+    for (int i = 0; i < num_feat; i++) {
+      tmp[i] += prandn();
+    }
     chol.matrixU().solveInPlace(tmp);
     s.col(mm) = tmp;
 
@@ -199,7 +237,7 @@ void run() {
       auto elapsed = end - start;
       double samples_per_sec = (i + 1) * (M.rows() + M.cols()) / elapsed;
 
-      printf("Iteration %d:\t RMSE: %3.2f\tavg RMSE: %3.2f\tFU(%6.2f)\tFM(%6.2f)\tSamples/sec: %6.2f\n",
+      printf("Iteration %d:\t RMSE: %3.3f\tavg RMSE: %3.3f\tFU(%6.2f)\tFM(%6.2f)\tSamples/sec: %6.2f\n",
               i, eval.first, eval.second, norm_u, norm_m, samples_per_sec);
     }
 
