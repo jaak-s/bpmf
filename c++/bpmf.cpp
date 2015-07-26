@@ -147,8 +147,8 @@ void sample_movie(MatrixXd &s, int mm, const SparseMatrixD &mat, double mean_rat
     for (SparseMatrixD::InnerIterator it(mat,mm); it; ++it, ++i) {
         // cout << "M[" << it.row() << "," << it.col() << "] = " << it.value() << endl;
         auto col = samples.col(it.row());
-        MM += col * col.transpose();
-        rr += col * ((it.value() - mean_rating) * alpha);
+        MM.noalias() += col * col.transpose();
+        rr.noalias() += col * ((it.value() - mean_rating) * alpha);
     }
 
     Eigen::LLT<MatrixXd> chol = (Lambda_u + alpha * MM).llt();
