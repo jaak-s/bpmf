@@ -41,6 +41,11 @@ MatrixXd Lambda_m;
 MatrixXd sample_u;
 MatrixXd sample_m;
 
+static MatrixXd* sm_MM;
+static VectorXd* sm_rr;
+static VectorXd* sm_tmp;
+#pragma omp threadprivate(sm_MM, sm_rr, sm_tmp)
+
 // parameters of Inv-Whishart distribution (see paper for details)
 MatrixXd WI_u;
 int b0_u = 2;
@@ -109,6 +114,16 @@ void init() {
     WI_m.setIdentity();
     mu0_m.resize(num_feat);
     mu0_m.setZero();
+
+    // initializing sample_movies variables
+#pragma omp parallel
+    {
+      sm_MM = new MatrixXd(num_feat, num_feat);
+      sm_MM->setZero();
+      sm_rr = new VectorXd(num_feat);
+      sm_rr->setZero();
+      sm_tmp = new VectorXd(num_feat);
+    }
 }
 
 inline double sqr(double x) { return x*x; }
@@ -139,30 +154,29 @@ std::pair<double,double> eval_probe_vec(int n, VectorXd & predictions, const Mat
 void sample_movie(MatrixXd &s, int mm, const SparseMatrixD &mat, double mean_rating,
     const MatrixXd &samples, double alpha, const VectorXd &mu_u, const MatrixXd &Lambda_u)
 {
-    int i = 0;
-    MatrixXd MM(num_feat, num_feat);
-    MM.setZero();
-    VectorXd rr(num_feat);
-    rr.setZero();
-    for (SparseMatrixD::InnerIterator it(mat,mm); it; ++it, ++i) {
+//    MatrixXd MM(num_feat, num_feat);
+    sm_MM->setZero();
+//    VectorXd rr(num_feat);
+    sm_rr->setZero();
+    for (SparseMatrixD::InnerIterator it(mat,mm); it; ++it) {
         // cout << "M[" << it.row() << "," << it.col() << "] = " << it.value() << endl;
         auto col = samples.col(it.row());
-        MM.noalias() += col * col.transpose();
-        rr.noalias() += col * ((it.value() - mean_rating) * alpha);
+        sm_MM->noalias() += col * col.transpose();
+        sm_rr->noalias() += col * ((it.value() - mean_rating) * alpha);
     }
 
-    Eigen::LLT<MatrixXd> chol = (Lambda_u + alpha * MM).llt();
+    Eigen::LLT<MatrixXd> chol = (Lambda_u + alpha * (*sm_MM)).llt();
     if(chol.info() != Eigen::Success) {
       throw std::runtime_error("Cholesky Decomposition failed!");
     }
 
-    VectorXd tmp = rr + Lambda_u * mu_u;
-    chol.matrixL().solveInPlace(tmp);
+    sm_tmp->noalias() = (*sm_rr) + Lambda_u * mu_u;
+    chol.matrixL().solveInPlace(*sm_tmp);
     for (int i = 0; i < num_feat; i++) {
-      tmp[i] += prandn();
+      (*sm_tmp)[i] += prandn();
     }
-    chol.matrixU().solveInPlace(tmp);
-    s.col(mm) = tmp;
+    chol.matrixU().solveInPlace(*sm_tmp);
+    s.col(mm).noalias() = *sm_tmp;
 
 #ifdef TEST_SAMPLE
       cout << "movie " << mm << ":" << result.cols() << " x" << result.rows() << endl;
