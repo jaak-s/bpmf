@@ -95,7 +95,7 @@ RNG prandn;
 void init() {
     mean_rating = M.sum() / M.nonZeros();
     Lambda_u.resize(num_feat, num_feat);
-    Lambda_u.resize(num_feat, num_feat);
+    Lambda_m.resize(num_feat, num_feat);
     Lambda_u.setIdentity();
     Lambda_m.setIdentity();
 
