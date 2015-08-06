@@ -14,9 +14,13 @@
 #endif
 
 #include "bpmf.h"
+#include "prand.h"
 
 using namespace std;
 using namespace Eigen;
+
+// parallel normal random
+RNG prandn;
 
 const int num_feat = 32;
 
@@ -114,7 +118,10 @@ void sample_movie(MatrixNXd &s, int mm, const SparseMatrixD &mat, double mean_ra
 
     VectorNd tmp = rr + Lambda_u * mu_u;
     chol.matrixL().solveInPlace(tmp);
-    tmp.noalias() += nrandn(num_feat);
+    for (int i = 0; i < num_feat; i++) {
+      tmp[i] += prandn();
+    }
+
     chol.matrixU().solveInPlace(tmp);
     s.col(mm) = tmp;
 
