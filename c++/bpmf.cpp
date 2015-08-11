@@ -4,7 +4,6 @@
 #include <string>
 #include <algorithm>
 #include <random>
-#include <chrono>
 
 #include <unsupported/Eigen/SparseExtra>
 
@@ -19,6 +18,9 @@
 
 using namespace std;
 using namespace Eigen;
+
+// parallel normal random
+RNG prandn;
 
 int num_feat = 32;
 
@@ -57,9 +59,6 @@ MatrixXd WI_m;
 int b0_m = 2;
 int df_m = num_feat;
 VectorXd mu0_m;
-
-// parallel normal random
-RNG prandn;
 
 void init() {
     mean_rating = M.sum() / M.nonZeros();
