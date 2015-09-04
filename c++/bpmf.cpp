@@ -67,6 +67,11 @@ void init() {
     Lambda_u.setIdentity();
     Lambda_m.setIdentity();
 
+    mu_u.resize(num_feat);
+    mu_u.setZero();
+    mu_m.resize(num_feat);
+    mu_m.setZero();
+
     sample_u.resize(num_feat, M.rows());
     sample_m.resize(num_feat, M.cols());
     sample_u.setZero();
@@ -184,12 +189,6 @@ void run() {
     std::cout << "Sampling" << endl;
     for(int i=0; i<nsims; ++i) {
 
-      // Sample from movie hyperparams
-      tie(mu_m, Lambda_m) = CondNormalWishart(sample_m, mu0_m, b0_m, WI_m, df_m);
-
-      // Sample from user hyperparams
-      tie(mu_u, Lambda_u) = CondNormalWishart(sample_u, mu0_u, b0_u, WI_u, df_u);
-
       const int num_m = M.cols();
       const int num_u = M.rows();
 #ifdef _OPENMP
@@ -210,6 +209,12 @@ void run() {
          sample_movie(sample_u, uu, Mt, mean_rating, sample_m, alpha, mu_u, Lambda_u);
        });
 #endif
+
+      // Sample from movie hyperparams
+      tie(mu_m, Lambda_m) = CondNormalWishart(sample_m, mu0_m, b0_m, WI_m, df_m);
+
+      // Sample from user hyperparams
+      tie(mu_u, Lambda_u) = CondNormalWishart(sample_u, mu0_u, b0_u, WI_u, df_u);
 
       auto eval = eval_probe_vec( (i < burnin) ? 0 : (i - burnin), predictions, sample_m, sample_u, mean_rating);
 //      auto eval = std::make_pair(0.0, 0.0);
