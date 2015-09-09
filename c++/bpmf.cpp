@@ -236,20 +236,6 @@ void run() {
 #endif
 
 /**
- * finds option from the list of command line arguments
- * returns 0 if not found
- */
-char* getCmdOption(char ** begin, char ** end, const std::string & option)
-{
-    char ** itr = std::find(begin, end, option);
-    if (itr != end && ++itr != end)
-    {
-        return *itr;
-    }
-    return 0;
-}
-
-/**
  * checks if command line option is present
  */
 bool cmdOptionExists(char** begin, char** end, const std::string& option)
@@ -260,7 +246,7 @@ bool cmdOptionExists(char** begin, char** end, const std::string& option)
 void usage()
 {
     printf("Usage:\n");
-    printf("./bpmf [options] <train.data> <test.data>\n");
+    printf("./bpmf [options] <train.matrix> <test.matrix>\n");
     printf("where options are:\n");
     printf(" -a alpha       precision (default 2.0)\n");
     printf(" -d num_latent  number of latent dimensions (default 32)\n");

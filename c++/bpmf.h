@@ -20,4 +20,18 @@ inline double tick() {
     return std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::high_resolution_clock::now().time_since_epoch()).count(); 
 }
 
+/**
+ * finds option from the list of command line arguments
+ * returns 0 if not found
+ */
+char* getCmdOption(char ** begin, char ** end, const std::string & option)
+{
+    char ** itr = std::find(begin, end, option);
+    if (itr != end && ++itr != end)
+    {
+        return *itr;
+    }
+    return 0;
+}
+
 #endif

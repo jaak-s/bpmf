@@ -24,9 +24,9 @@ RNG prandn;
 
 const int num_feat = 32;
 
-const double alpha = 2;
-const int nsims = 20;
-const int burnin = 5;
+double alpha = 2;
+int psamples = 15;
+int burnin   = 5;
 
 double mean_rating = .0;
 
@@ -59,6 +59,8 @@ void init() {
     mean_rating = M.sum() / M.nonZeros();
     Lambda_u.setIdentity();
     Lambda_m.setIdentity();
+    Lambda_u *= 10;
+    Lambda_m *= 10;
 
     sample_u = MatrixNXd(num_feat,M.rows());
     sample_m = MatrixNXd(num_feat,M.cols());
@@ -161,7 +163,7 @@ void run() {
     predictions = VectorXd::Zero( P.nonZeros() );
 
     std::cout << "Sampling" << endl;
-    for(int i=0; i<nsims; ++i) {
+    for(int i = 0; i < burnin + psamples; ++i) {
 
       const int num_m = M.cols();
       const int num_u = M.rows();
@@ -190,6 +192,9 @@ void run() {
       // Sample from user hyperparams
       tie(mu_u, Lambda_u) = CondNormalWishart(sample_u, mu0_u, b0_u, WI_u, df_u);
 
+      if (i == burnin) {
+        printf("======= Burn-in completed, averaging posterior =======\n");
+      }
       auto eval = eval_probe_vec( (i < burnin) ? 0 : (i - burnin), predictions, sample_m, sample_u, mean_rating);
 //      auto eval = std::make_pair(0.0, 0.0);
       double norm_u = sample_u.norm();
@@ -212,21 +217,64 @@ void run() {
 void usage()
 {
     printf("Usage:\n");
-    printf("./bpmf_fixed <train.data> <test.data>\n");
+    printf("./bpmf_fixed [options] <train.matrix> <test.matrix>\n");
+    printf("where options are:\n");
+    printf("  --burnin    5    number of burn-in steps\n");
+    printf("  --psamples 15    number of posterior samples (after burn-in)\n");
+    printf("  --alpha   2.0    precision of measurements\n");
 }
 
 int main(int argc, char *argv[])
 {
-    if (argc - 1 != 2) {
-        printf("The number of arguments was %d but should be 2.\n", argc - 1);
+    int optargc = argc - 3;
+    if (optargc < 0) {
+        printf("Need at least <train.matrix> and <test.matrix> files as arguments.\n");
         usage();
         exit(1);
     }
+    // making sure matrix files exist
+    char* train_matrix = argv[argc - 2];
+    char* test_matrix  = argv[argc - 1];
+    if ( access( train_matrix, F_OK) == -1 ) {
+        printf("File for train.matrix '%s' does not exist.\n", train_matrix);
+        usage();
+        exit(1);
+    }
+    if ( access( test_matrix, F_OK) == -1 ) {
+        printf("File for test.matrix '%s' does not exist.\n", test_matrix);
+        usage();
+        exit(1);
+    }
+    char * tmp;
+    // burnin
+    tmp = getCmdOption(argv, argv + argc - 2, "--burnin");
+    if (tmp) {
+        burnin = atoi(tmp);
+    }
+    // psamples
+    tmp = getCmdOption(argv, argv + argc - 2, "--psamples");
+    if (tmp) {
+        psamples = atoi(tmp);
+    }
+    // precision
+    tmp = getCmdOption(argv, argv + argc - 2, "--alpha");
+    if (tmp) {
+        alpha = atof(tmp);
+    }
+
+    printf("---- BPMF parameters ----\n");
+    printf("alpha      = %1.2f\n", alpha);
+    printf("num_latent = %d\n", num_feat);
+    printf("train      = %s\n", train_matrix);
+    printf("test       = %s\n", test_matrix);
+    printf("burnin     = %d\n", burnin);
+    printf("psamples   = %d\n", psamples);
+
     Eigen::initParallel();
 
-    loadMarket(M, argv[1]);
+    loadMarket(M, train_matrix);
     Mt = M.transpose();
-    loadMarket(P, argv[2]);
+    loadMarket(P, test_matrix);
 
     init();
 #ifdef TEST_SAMPLE
