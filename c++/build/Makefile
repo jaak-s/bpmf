@@ -21,10 +21,12 @@ CPPFLAGS=`pkg-config --cflags eigen3`
 VPATH=..
 LINK.o=$(CXX) $(CXXFLAGS) $(LDFLAGS)
 
+all: bpmf bpmf_fixed
 bpmf: mvnormal.o bpmf.o
+bpmf_fixed: mvnormal.o bpmf_fixed.o
 
 clean:
-	rm -f bpmf *.o *_test *_bench
+	rm -f bpmf bpmf_fixed *.o *_test *_bench
 
 mvnormal_test: mvnormal.cpp
 	$(CXX) -DTEST_MVNORMAL $(CXXFLAGS) -o $@ $?
