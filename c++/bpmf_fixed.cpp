@@ -198,7 +198,7 @@ void run() {
       auto elapsed = end - start;
       double samples_per_sec = (i + 1) * (M.rows() + M.cols()) / elapsed;
 
-      printf("Iteration %d:\t RMSE: %3.2f\tavg RMSE: %3.2f\tFU(%6.2f)\tFM(%6.2f)\tSamples/sec: %6.2f\n",
+      printf("Iteration %d:\t RMSE: %3.3f\tavg RMSE: %3.3f\tFU(%6.2f)\tFM(%6.2f)\tSamples/sec: %6.2f\n",
               i, eval.first, eval.second, norm_u, norm_m, samples_per_sec);
     }
 
