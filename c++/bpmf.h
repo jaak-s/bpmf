@@ -34,4 +34,12 @@ char* getCmdOption(char ** begin, char ** end, const std::string & option)
     return 0;
 }
 
+/**
+ * checks if command line option is present
+ */
+bool cmdOptionExists(char** begin, char** end, const std::string& option)
+{
+    return std::find(begin, end, option) != end;
+}
+
 #endif

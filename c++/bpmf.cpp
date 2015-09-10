@@ -66,6 +66,8 @@ void init() {
     Lambda_m.resize(num_feat, num_feat);
     Lambda_u.setIdentity();
     Lambda_m.setIdentity();
+    Lambda_u *= 10;
+    Lambda_m *= 10;
 
     mu_u.resize(num_feat);
     mu_u.setZero();
@@ -235,21 +237,13 @@ void run() {
 
 #endif
 
-/**
- * checks if command line option is present
- */
-bool cmdOptionExists(char** begin, char** end, const std::string& option)
-{
-    return std::find(begin, end, option) != end;
-}
-
 void usage()
 {
     printf("Usage:\n");
     printf("./bpmf [options] <train.matrix> <test.matrix>\n");
     printf("where options are:\n");
-    printf(" -a alpha       precision (default 2.0)\n");
-    printf(" -d num_latent  number of latent dimensions (default 32)\n");
+    printf("  --alpha 2.0       precision (default 2.0)\n");
+    printf("  --num-latent 32   number of latent dimensions (default 32)\n");
 }
 
 int main(int argc, char *argv[])
@@ -277,11 +271,11 @@ int main(int argc, char *argv[])
 
     // fetching optional arguments
     char * tmp;
-    tmp = getCmdOption(argv, argv + argc - 2, "-a");
+    tmp = getCmdOption(argv, argv + argc - 2, "--alpha");
     if (tmp) {
         alpha = atof(tmp);
     }
-    tmp = getCmdOption(argv, argv + argc - 2, "-d");
+    tmp = getCmdOption(argv, argv + argc - 2, "--num-latent");
     if (tmp) {
         num_feat = atoi(tmp);
     }
