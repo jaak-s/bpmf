@@ -22,13 +22,15 @@ using namespace Eigen;
 // parallel normal random
 RNG prandn;
 
-const int num_feat = 32;
+const int num_feat = 50;
 
 double alpha = 2;
 int psamples = 15;
 int burnin   = 5;
 
 double mean_rating = .0;
+double clamp_min = -INFINITY;
+double clamp_max =  INFINITY;
 
 typedef SparseMatrix<double> SparseMatrixD;
 SparseMatrixD M, Mt, P;
@@ -81,15 +83,17 @@ std::pair<double,double> eval_probe_vec(int n, VectorXd & predictions, const Mat
 {
     double se = 0.0, se_avg = 0.0;
     unsigned idx = 0;
+    double a = (double)n / (double)(n + 1);
+    double b = 1.0 - a;
     for (int k=0; k<P.outerSize(); ++k) {
         for (SparseMatrix<double>::InnerIterator it(P,k); it; ++it) {
             const double pred = sample_m.col(it.col()).dot(sample_u.col(it.row())) + mean_rating;
             //se += (it.value() < log10(200)) == (pred < log10(200));
             se += sqr(it.value() - pred);
 
-            const double pred_avg = (n == 0) ? pred : (predictions[idx] + (pred - predictions[idx]) / n);
+            const double pred_avg = (n == 0) ? pred : (a * predictions[idx] + b * pred);
             //se_avg += (it.value() < log10(200)) == (pred_avg < log10(200));
-            se_avg += sqr(it.value() - pred_avg);
+            se_avg += sqr(it.value() - clamp(pred_avg, clamp_min, clamp_max));
             predictions[idx++] = pred_avg;
         }
     }
@@ -273,6 +277,12 @@ int main(int argc, char *argv[])
     Eigen::initParallel();
 
     loadMarket(M, train_matrix);
+    auto minmax = getMinMax(M);
+    clamp_min = minmax.first;
+    clamp_max = minmax.second;
+    printf("clamp_min  = %.3f\n", clamp_min);
+    printf("clamp_max  = %.3f\n", clamp_max);
+
     Mt = M.transpose();
     loadMarket(P, test_matrix);
 

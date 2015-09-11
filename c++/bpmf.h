@@ -14,6 +14,10 @@ auto nrandn(int n) -> decltype( Eigen::VectorXd::NullaryExpr(n, std::ptr_fun(ran
 
 std::pair<Eigen::VectorXd, Eigen::MatrixXd> CondNormalWishart(const Eigen::MatrixXd &U, const Eigen::VectorXd &mu, const double kappa, const Eigen::MatrixXd &T, const int nu);
 
+inline double clamp(double x, double min, double max) {
+  return x < min ? min : (x > max ? max : x);
+}
+
 #include <chrono>
 
 inline double tick() {
@@ -42,4 +46,16 @@ bool cmdOptionExists(char** begin, char** end, const std::string& option)
     return std::find(begin, end, option) != end;
 }
 
+std::pair<double, double> getMinMax(const Eigen::SparseMatrix<double> &mat) {
+    double min = INFINITY;
+    double max = -INFINITY;
+    for (int k = 0; k < mat.outerSize(); ++k) {
+        for (Eigen::SparseMatrix<double>::InnerIterator it(mat,k); it; ++it) {
+            double v = it.value();
+            if (v < min) min = v;
+            if (v > max) max = v;
+        }
+    }
+    return std::make_pair(min, max);
+}
 #endif
